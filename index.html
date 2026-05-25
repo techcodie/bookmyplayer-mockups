@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>BookMyPlayer · AI Feature Proposal — Ansh Baheti</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #faf9f5;
+    --ink: #0a1628;
+    --ink-2: #4a5568;
+    --line: #e8e6df;
+    --ai: #00b8e6;
+    --ai-soft: #e6f8fd;
+    --ai-deep: #006a85;
+    --ok: #16a34a;
+    --warn: #f59e0b;
+    --bad: #ef4444;
+    --navy: #0b1a3a;
+    --hot: #ff3e3e;
+  }
+  html, body { background: var(--bg); color: var(--ink); font-family: 'Inter', system-ui, sans-serif; }
+  .font-serif { font-family: 'Fraunces', Georgia, serif; letter-spacing: -0.01em; }
+
+  /* Annotation marker — the numbered circle */
+  .mark {
+    position: absolute;
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: var(--hot);
+    color: white;
+    font-weight: 700;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 0 4px white, 0 8px 20px -4px rgba(255,62,62,0.5);
+    z-index: 5;
+    font-family: 'Inter', sans-serif;
+  }
+  .mark-inline {
+    display: inline-flex;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--hot);
+    color: white;
+    font-weight: 700;
+    font-size: 12px;
+    align-items: center; justify-content: center;
+    margin-right: 10px;
+    flex-shrink: 0;
+  }
+
+  /* Browser/Phone frames */
+  .browser-frame {
+    background: white;
+    border-radius: 18px;
+    box-shadow: 0 30px 70px -30px rgba(10,22,40,0.2), 0 0 0 1px var(--line);
+    overflow: hidden;
+    position: relative;
+  }
+  .browser-bar {
+    background: #f4f3ee;
+    border-bottom: 1px solid var(--line);
+    padding: 10px 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .browser-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+  .pill-ai { background: var(--ai-soft); color: var(--ai-deep); }
+  .pill-ok { background: #e7f6ec; color: #146c2e; }
+  .pill-warn { background: #fef3e0; color: #92500a; }
+  .pill-bad { background: #fde9e9; color: #8a1f1f; }
+  .pill-muted { background: #eef0f3; color: #475467; }
+
+  .bar-fill { height: 8px; border-radius: 999px; background: linear-gradient(90deg, #00b8e6, #006a85); }
+  .ws-bubble-in { background: white; border-radius: 14px 14px 14px 4px; padding: 10px 14px; max-width: 80%; box-shadow: 0 1px 1px rgba(0,0,0,0.06); }
+  .ws-bubble-out { background: #d9fdd3; border-radius: 14px 14px 4px 14px; padding: 10px 14px; max-width: 80%; box-shadow: 0 1px 1px rgba(0,0,0,0.06); }
+  .heat-cell { height: 24px; border-radius: 4px; }
+
+  .feature-tab {
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-2);
+    border: 1px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .feature-tab.active { background: var(--ink); color: white; }
+  .scrollbar-thin::-webkit-scrollbar { height: 6px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: #d6d3c8; border-radius: 4px; }
+
+  .section-divider { border-top: 1px dashed var(--line); }
+  .legend-row { padding: 14px 0; }
+  .legend-row + .legend-row { border-top: 1px solid var(--line); }
+  .impact-card {
+    padding: 16px; border-radius: 12px; background: white; border: 1px solid var(--line);
+  }
+
+  /* Bottom nav for phone */
+  .phone-nav { display: flex; justify-content: space-around; padding: 10px 0 14px; border-top: 1px solid var(--line); background: white; }
+  .phone-nav-item { text-align: center; font-size: 10px; color: var(--ink-2); }
+  .phone-nav-item.active { color: var(--ai-deep); }
+</style>
+</head>
+<body class="antialiased">
+
+<!-- ============================ COVER ============================ -->
+<header class="max-w-6xl mx-auto px-6 pt-12 pb-8">
+  <div class="flex items-center justify-between mb-12">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-[var(--navy)] text-white flex items-center justify-center font-serif font-bold">B</div>
+      <div>
+        <div class="font-serif text-lg leading-none">BookMyPlayer</div>
+        <div class="text-xs text-[var(--ink-2)] mt-1">AI Internship · Assignment Submission</div>
+      </div>
+    </div>
+    <div class="text-right">
+      <div class="text-sm font-semibold">Ansh Baheti</div>
+      <div class="text-xs text-[var(--ink-2)]">May 2026</div>
+    </div>
+  </div>
+
+  <div class="max-w-4xl">
+    <span class="pill pill-ai mb-5">ASSIGNMENT SUBMISSION</span>
+    <h1 class="font-serif text-5xl md:text-6xl leading-[1.05] tracking-tight mb-5">
+      5 AI features for BookMyPlayer —<br/>
+      <span class="italic">pitched, designed, and annotated.</span>
+    </h1>
+    <p class="text-[var(--ink-2)] text-lg max-w-2xl leading-relaxed">
+      For each feature: a one-line pitch, the change in the UI shown as a numbered mockup, a bullet legend explaining each callout, and the business impact. Built from the current BookMyPlayer homepage as the baseline.
+    </p>
+  </div>
+
+  <!-- Summary strip -->
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mt-12">
+    <a href="#f1" class="impact-card hover:border-[var(--ai)] transition">
+      <div class="text-[10px] text-[var(--ai-deep)] font-bold tracking-wider">01 · FLAGSHIP</div>
+      <div class="text-sm font-semibold mt-1">Video Skill Analysis</div>
+      <div class="text-xs text-[var(--ink-2)] mt-1">AI coach in 60s</div>
+    </a>
+    <a href="#f2" class="impact-card hover:border-[var(--ai)] transition">
+      <div class="text-[10px] text-[var(--ai-deep)] font-bold tracking-wider">02</div>
+      <div class="text-sm font-semibold mt-1">WhatsApp AI</div>
+      <div class="text-xs text-[var(--ink-2)] mt-1">Books trials in chat</div>
+    </a>
+    <a href="#f3" class="impact-card hover:border-[var(--ai)] transition">
+      <div class="text-[10px] text-[var(--ai-deep)] font-bold tracking-wider">03</div>
+      <div class="text-sm font-semibold mt-1">Lead Scoring</div>
+      <div class="text-xs text-[var(--ink-2)] mt-1">Ranks every inquiry</div>
+    </a>
+    <a href="#f4" class="impact-card hover:border-[var(--ai)] transition">
+      <div class="text-[10px] text-[var(--ai-deep)] font-bold tracking-wider">04</div>
+      <div class="text-sm font-semibold mt-1">Personalized Feed</div>
+      <div class="text-xs text-[var(--ink-2)] mt-1">Same template, two apps</div>
+    </a>
+    <a href="#f5" class="impact-card hover:border-[var(--ai)] transition">
+      <div class="text-[10px] text-[var(--ai-deep)] font-bold tracking-wider">05</div>
+      <div class="text-sm font-semibold mt-1">Academy Co-Pilot</div>
+      <div class="text-xs text-[var(--ink-2)] mt-1">Weekly AI briefings</div>
+    </a>
+  </div>
+</header>
+
+<!-- ============================ NAV ============================ -->
+<nav class="sticky top-0 z-30 bg-[var(--bg)]/90 backdrop-blur border-y border-[var(--line)]">
+  <div class="max-w-6xl mx-auto px-6 py-3 flex gap-2 overflow-x-auto scrollbar-thin">
+    <a href="#current" class="feature-tab">Current state</a>
+    <a href="#f1" class="feature-tab active">01 · Video Analysis</a>
+    <a href="#f2" class="feature-tab">02 · WhatsApp AI</a>
+    <a href="#f3" class="feature-tab">03 · Lead Scoring</a>
+    <a href="#f4" class="feature-tab">04 · Personalized Feed</a>
+    <a href="#f5" class="feature-tab">05 · Academy Co-Pilot</a>
+    <a href="#roadmap" class="feature-tab">Roadmap</a>
+  </div>
+</nav>
+
+<!-- ============================================================== -->
+<!-- ================== CURRENT STATE ============================ -->
+<!-- ============================================================== -->
+<section id="current" class="max-w-6xl mx-auto px-6 py-16">
+  <div class="text-xs font-semibold tracking-[0.15em] text-[var(--ink-2)] mb-2">BASELINE</div>
+  <h2 class="font-serif text-3xl md:text-4xl tracking-tight mb-3">The homepage today</h2>
+  <p class="text-[var(--ink-2)] max-w-2xl mb-8">
+    Reference for every "after" mockup below. Strong aesthetic, but the homepage works as a directory — academies first, AI tucked below the fold, no per-user differentiation.
+  </p>
+
+  <div class="browser-frame max-w-4xl mx-auto">
+    <div class="browser-bar">
+      <span class="browser-dot bg-[#ff5f57]"></span>
+      <span class="browser-dot bg-[#ffbd2e]"></span>
+      <span class="browser-dot bg-[#28c941]"></span>
+      <div class="mx-auto text-xs text-[var(--ink-2)] bg-white border border-[var(--line)] rounded-md px-3 py-1">bookmyplayer.com</div>
+    </div>
+    <div class="p-8 bg-[var(--bg)]">
+      <!-- Search -->
+      <div class="flex items-center justify-between mb-8">
+        <div class="flex-1 bg-white rounded-full border border-[var(--line)] px-4 py-2 flex items-center gap-2 text-sm text-[var(--ink-2)] max-w-md">
+          <span>🔍</span> Search academies, sports, coaches...
+          <span class="ml-auto text-xs bg-[var(--bg)] px-2 py-0.5 rounded">⌘K</span>
+        </div>
+        <div class="flex items-center gap-3 ml-4">
+          <span class="relative">🔔<span class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span></span>
+          <div class="w-8 h-8 rounded-full bg-[var(--navy)]"></div>
+        </div>
+      </div>
+      <!-- Greeting -->
+      <div class="text-xs text-[var(--ink-2)] tracking-wider mb-2">GOOD EVENING</div>
+      <h3 class="font-serif text-4xl mb-4">Ready to dominate the field, <em>Arjun</em>?</h3>
+      <div class="flex gap-2 mb-8">
+        <span class="bg-white border border-[var(--line)] px-3 py-1.5 rounded-full text-xs">🔥 Day 47 Streak</span>
+        <span class="bg-white border border-[var(--line)] px-3 py-1.5 rounded-full text-xs">✨ Skill Level: Intermediate</span>
+      </div>
+      <!-- Recommended -->
+      <div class="font-semibold text-lg mb-1">Recommended for you</div>
+      <div class="text-xs text-[var(--ink-2)] mb-4">Based on your videos, location, and play style</div>
+      <div class="grid grid-cols-3 gap-3">
+        <div class="bg-white rounded-xl border border-[var(--line)] p-3">
+          <div class="aspect-video bg-gradient-to-br from-green-500 to-green-800 rounded mb-2 flex items-end p-2"><span class="pill pill-ok bg-white">✓ Verified</span></div>
+          <div class="text-sm font-semibold">Elite Football Academy</div>
+          <div class="text-xs text-[var(--ink-2)] flex justify-between mt-1"><span>★ 4.8 (124)</span><span>2.3km</span></div>
+        </div>
+        <div class="bg-white rounded-xl border border-[var(--line)] p-3">
+          <div class="aspect-video bg-gradient-to-br from-slate-700 to-slate-900 rounded mb-2 flex items-end p-2"><span class="pill pill-ok bg-white">✓ Verified</span></div>
+          <div class="text-sm font-semibold">Pro Sports Training</div>
+          <div class="text-xs text-[var(--ink-2)] flex justify-between mt-1"><span>★ 4.9 (89)</span><span>4.1km</span></div>
+        </div>
+        <div class="bg-white rounded-xl border border-[var(--line)] p-3">
+          <div class="aspect-video bg-gradient-to-br from-emerald-500 to-emerald-800 rounded mb-2 flex items-end p-2"><span class="pill pill-ok bg-white">✓ Verified</span></div>
+          <div class="text-sm font-semibold">Champions School</div>
+          <div class="text-xs text-[var(--ink-2)] flex justify-between mt-1"><span>★ 4.7 (156)</span><span>5.8km</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 max-w-4xl mx-auto">
+    <div class="impact-card">
+      <div class="text-xs text-[var(--ink-2)] uppercase tracking-wider">Gap 1</div>
+      <div class="text-sm mt-1">AI video upload sits below the fold — looks like a side feature, not the moat.</div>
+    </div>
+    <div class="impact-card">
+      <div class="text-xs text-[var(--ink-2)] uppercase tracking-wider">Gap 2</div>
+      <div class="text-sm mt-1">Every user sees the same homepage regardless of sport, age, or skill.</div>
+    </div>
+    <div class="impact-card">
+      <div class="text-xs text-[var(--ink-2)] uppercase tracking-wider">Gap 3</div>
+      <div class="text-sm mt-1">Academies get raw inquiries — no quality signal, no follow-up automation.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================== -->
+<!-- ================== FEATURE 01: VIDEO ANALYSIS ================ -->
+<!-- ============================================================== -->
+<section id="f1" class="bg-white border-y border-[var(--line)]">
+  <div class="max-w-6xl mx-auto px-6 py-20">
+    <div class="grid grid-cols-12 gap-8 mb-10">
+      <div class="col-span-12 md:col-span-7">
+        <div class="text-xs font-semibold tracking-[0.15em] text-[var(--ai-deep)] mb-3">FEATURE 01 · FLAGSHIP</div>
+        <h2 class="font-serif text-4xl md:text-5xl tracking-tight mb-4">AI Video Skill Analysis</h2>
+        <p class="text-[var(--ink-2)] text-lg leading-relaxed mb-5">
+          A player uploads a 30-second clip. The system returns a frame-by-frame breakdown — posture, balance, timing, technique — in under 60 seconds, mapped to drills and academies.
+        </p>
+        <div class="space-y-2 text-sm">
+          <div class="flex items-start gap-2"><span class="text-[var(--ai)] font-bold">•</span> Why it matters: shifts BookMyPlayer from a directory to a digital coach</div>
+          <div class="flex items-start gap-2"><span class="text-[var(--ai)] font-bold">•</span> Only Indian sports platform doing this well today — long-term moat</div>
+          <div class="flex items-start gap-2"><span class="text-[var(--ai)] font-bold">•</span> Every analysis becomes proprietary training data</div>
+        </div>
+      </div>
+      <div class="col-span-12 md:col-span-5">
+        <div class="impact-card">
+          <div class="text-xs uppercase tracking-wider text-[var(--ink-2)] mb-3">Tech stack I'd use</div>
+          <div class="space-y-2 text-sm">
+            <div><b>MediaPipe</b> — pose estimation, runs efficiently on-device</div>
+            <div><b>PyTorch</b> — train custom sports-movement models on Indian footage</div>
+            <div><b>OpenCV</b> — frame extraction and preprocessing pipeline</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Annotated mockup -->
+    <div class="browser-frame relative">
+      <div class="browser-bar">
+        <span class="browser-dot bg-[#ff5f57]"></span>
+        <span class="browser-dot bg-[#ffbd2e]"></span>
+        <span class="browser-dot bg-[#28c941]"></span>
+        <div class="mx-auto text-xs text-[var(--ink-2)] bg-white border border-[var(--line)] rounded-md px-3 py-1">bookmyplayer.com/analysis/arjun-batting-03</div>
+      </div>
+      <div class="p-8 bg-white relative">
+        <div class="grid grid-cols-12 gap-6">
+          <!-- Video player -->
+          <div class="col-span-12 lg:col-span-7 relative">
+            <div class="mark" style="top: -10px; left: -10px;">1</div>
+            <div class="relative rounded-2xl overflow-hidden bg-[var(--navy)] aspect-video">
+              <svg viewBox="0 0 400 225" class="absolute inset-0 w-full h-full">
+                <rect width="400" height="225" fill="#0a1f0a"/>
+                <ellipse cx="200" cy="200" rx="180" ry="20" fill="#06170a"/>
+                <g stroke="#00b8e6" stroke-width="2" fill="none">
+                  <circle cx="200" cy="80" r="10" fill="#00b8e6" opacity="0.3"/>
+                  <line x1="200" y1="90" x2="200" y2="140"/>
+                  <line x1="200" y1="100" x2="170" y2="125"/>
+                  <line x1="200" y1="100" x2="235" y2="120"/>
+                  <line x1="170" y1="125" x2="155" y2="155"/>
+                  <line x1="235" y1="120" x2="260" y2="100"/>
+                  <line x1="200" y1="140" x2="180" y2="185"/>
+                  <line x1="200" y1="140" x2="220" y2="185"/>
+                  <circle cx="200" cy="100" r="3" fill="#00b8e6"/>
+                  <circle cx="170" cy="125" r="3" fill="#00b8e6"/>
+                  <circle cx="235" cy="120" r="3" fill="#00b8e6"/>
+                  <circle cx="155" cy="155" r="3" fill="#ef4444"/>
+                  <circle cx="260" cy="100" r="3" fill="#00b8e6"/>
+                  <circle cx="200" cy="140" r="3" fill="#00b8e6"/>
+                  <circle cx="180" cy="185" r="3" fill="#00b8e6"/>
+                  <circle cx="220" cy="185" r="3" fill="#00b8e6"/>
+                  <line x1="260" y1="100" x2="295" y2="70" stroke="#fff" stroke-width="3"/>
+                </g>
+                <rect x="155" y="160" width="90" height="22" rx="4" fill="#ef4444"/>
+                <text x="200" y="175" text-anchor="middle" fill="white" font-size="10" font-weight="600">Front foot opens early</text>
+              </svg>
+              <div class="absolute top-3 right-3 flex gap-2">
+                <span class="pill pill-ai">AI Pose Overlay</span>
+              </div>
+            </div>
+
+            <div class="mt-5 relative">
+              <div class="mark" style="top: -5px; left: -10px;">2</div>
+              <div class="text-xs font-semibold text-[var(--ink-2)] uppercase tracking-wider mb-3">Detected events · click to jump</div>
+              <div class="space-y-2">
+                <div class="flex items-center gap-3 p-3 rounded-xl border border-[var(--line)]">
+                  <span class="text-xs font-mono bg-[var(--ink)] text-white px-2 py-1 rounded">00:04</span>
+                  <span class="pill pill-warn">Balance</span>
+                  <span class="text-sm flex-1">Weight transfer late by ~120ms vs. ideal</span>
+                  <span class="text-xs text-[var(--ink-2)]">Conf. 88%</span>
+                </div>
+                <div class="flex items-center gap-3 p-3 rounded-xl border border-[var(--line)] bg-[#fef5f5]">
+                  <span class="text-xs font-mono bg-[var(--bad)] text-white px-2 py-1 rounded">00:12</span>
+                  <span class="pill pill-bad">Footwork</span>
+                  <span class="text-sm flex-1">Front foot opens 22° early — exposes off-stump</span>
+                  <span class="text-xs text-[var(--ink-2)]">Conf. 94%</span>
+                </div>
+                <div class="flex items-center gap-3 p-3 rounded-xl border border-[var(--line)]">
+                  <span class="text-xs font-mono bg-[var(--ink)] text-white px-2 py-1 rounded">00:19</span>
+                  <span class="pill pill-warn">Bat angle</span>
+                  <span class="text-sm flex-1">Bat face 14° open at contact</span>
+                  <span class="text-xs text-[var(--ink-2)]">Conf. 81%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-span-12 lg:col-span-5">
+            <div class="rounded-2xl border border-[var(--line)] p-6 relative">
+              <div class="mark" style="top: -10px; right: -10px;">3</div>
+              <div class="text-xs text-[var(--ink-2)] uppercase tracking-wider">Overall Skill Score</div>
+              <div class="flex items-baseline gap-2 mt-1">
+                <span class="font-serif text-6xl tracking-tight">78</span>
+                <span class="text-sm text-[var(--ok)] font-semibold">+5 vs. last session</span>
+              </div>
+              <div class="text-xs text-[var(--ink-2)] mt-1 mb-5">Top 22% of U18 batters in Mumbai</div>
+              <div class="space-y-3">
+                <div><div class="flex justify-between text-sm mb-1"><span class="font-semibold">Posture</span><span class="text-[var(--ink-2)]">81</span></div><div class="h-2 bg-[var(--ai-soft)] rounded-full"><div class="bar-fill" style="width:81%"></div></div></div>
+                <div><div class="flex justify-between text-sm mb-1"><span class="font-semibold">Balance</span><span class="text-[var(--ink-2)]">65</span></div><div class="h-2 bg-[var(--ai-soft)] rounded-full"><div class="bar-fill" style="width:65%"></div></div></div>
+                <div><div class="flex justify-between text-sm mb-1"><span class="font-semibold">Timing</span><span class="text-[var(--ink-2)]">72</span></div><div class="h-2 bg-[var(--ai-soft)] rounded-full"><div class="bar-fill" style="width:72%"></div></div></div>
+                <div><div class="flex justify-between text-sm mb-1"><span class="font-semibold">Technique</span><span class="text-[var(--ink-2)]">74</span></div><div class="h-2 bg-[var(--ai-soft)] rounded-full"><div class="bar-fill" style="width:74%"></div></div></div>
+              </div>
+            </div>
+
+            <div class="rounded-2xl border border-[var(--line)] p-6 mt-4 relative">
+              <div class="mark" style="top: -10px; right: -10px;">4</div>
+              <div class="font-semibold mb-3">Drills targeting your weak point</div>
+              <div class="space-y-2">
+                <div class="flex items-center gap-3 p-2 rounded-lg bg-[var(--bg)]">
+                  <div class="w-9 h-9 rounded bg-[var(--navy)] text-white flex items-center justify-center text-xs font-bold">01</div>
+                  <div class="flex-1 text-sm"><div class="font-semibold">Foot-position drill</div><div class="text-xs text-[var(--ink-2)]">8 min · targets early foot</div></div>
+                </div>
+                <div class="flex items-center gap-3 p-2 rounded-lg bg-[var(--bg)]">
+                  <div class="w-9 h-9 rounded bg-[var(--navy)] text-white flex items-center justify-center text-xs font-bold">02</div>
+                  <div class="flex-1 text-sm"><div class="font-semibold">Slow-pitch balance</div><div class="text-xs text-[var(--ink-2)]">12 min · weight transfer</div></div>
+                </div>
+              </div>
+              <button class="mt-4 w-full py-2.5 rounded-xl bg-[var(--navy)] text-white text-sm font-semibold relative">
+                Book a coach for these gaps · 2 nearby
+                <span class="mark absolute" style="top: -12px; right: -12px;">5</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LEGEND -->
+    <div class="mt-10 grid grid-cols-12 gap-8">
+      <div class="col-span-12 md:col-span-7">
+        <div class="text-xs font-semibold uppercase tracking-wider text-[var(--ink-2)] mb-4">What each callout shows</div>
+        <div>
+          <div class="legend-row flex items-start"><span class="mark-inline">1</span><div><div class="font-semibold text-sm">Pose-overlay video</div><div class="text-sm text-[var(--ink-2)]">Skeleton drawn on the player's clip. Red joints mark issues. Makes the AI verdict visible, not just a number.</div></div></div>
+          <div class="legend-row flex items-start"><span class="mark-inline">2</span><div><div class="font-semibold text-sm">Timestamped issue list</div><div class="text-sm text-[var(--ink-2)]">Every flagged event is clickable — jumps the video to that frame. Confidence % shown so the user can judge the AI.</div></div></div>
+          <div class="legend-row flex items-start"><span class="mark-inline">3</span><div><div class="font-semibold text-sm">Skill score with peer percentile</div><div class="text-sm text-[var(--ink-2)]">"78" alone is meaningless. "Top 22% of U18 in Mumbai" makes it a benchmark — drives competitive return visits.</div></div></div>
+          <div class="legend-row flex items-start"><span class="mark-inline">4</span><div><div class="font-semibold text-sm">Drills auto-matched to weakness</div><div class="text-sm text-[var(--ink-2)]">Not generic drills — surfaces the 2 that target this session's weakest metric. Closes the loop: diagnosis → fix.</div></div></div>
+          <div class="legend-row flex items-start"><span class="mark-inline">5</span><div><div class="font-semibold text-sm">Coach booking CTA</div><div class="text-sm text-[var(--ink-2)]">From "you have a problem" to "book a coach who fixes it" in one tap. This is where AI converts to academy revenue.</div></div></div>
+        </div>
+      </div>
+
+      <div class="col-span-12 md:col-span-5">
+        <div class="text-xs font-semibold uppercase tracking-wider text-[var(--ink-2)] mb-4">Business impact</div>
+        <div class="space-y-3">
+          <div class="impact-card"><div class="text-2xl font-serif">↑ Retention</div><div class="text-xs text-[var(--ink-2)] mt-1">Players return weekly to compare scores</div></div>
+          <div class="impact-card"><div class="text-2xl font-serif">Viral loop</div><div class="text-xs text-[var(--ink-2)] mt-1">Shareable score → organic acquisition</div></div>
+          <div class="impact-card"><div class="text-2xl font-serif">Data moat</div><div class="text-xs text-[var(--ink-2)] mt-1">Every clip improves the next model version</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================== -->
+<!-- ================== FEATURE 02: WHATSAPP AI =================== -->
+<!-- ============================================================== -->
+<section id="f2" class="max-w-6xl mx-auto px-6 py-20">
+  <div class="grid grid-cols-12 gap-8 mb-10">
+    <div class="col-span-12 md:col-span-7">
+      <div class="text-xs font-semibold tracking-[0.15em] text-[var(--ai-deep)] mb-3">FEATURE 02</div>
+      <h2 class="font-serif text-4xl md:text-5xl tracking-tight mb-4">WhatsApp AI Engagement</h2>
+      <p class="text-[var(--ink-2)] text-lg leading-relaxed mb-5">
+        Indian parents live on WhatsApp. The bot continues the conversation after the user leaves the website — qualifies intent, books trials, sends reminders. Hands off to a human only when confidence drops.
+      </p>
+      <div class="space-y-2 text-sm">
+        <div class="flex items-start gap-2"><span class="text-[var(--ai)] font-bold">•</span> Cuts the inquiry → conversion drop-off where most leads are lost today</div>
+        <div class="flex items-start gap-2"><span class="text-[var(--ai)] font-bold">•</span> Replies in seconds — academies usually take hours</div>
+        <div class="flex items-start gap-2"><span class="text-[var(--ai)] font-bold">•</span> Grounded in academy data via RAG, not free-form LLM hallucination</div>
+      </div>
+    </div>
+    <div class="col-span-12 md:col-span-5">
+      <div class="impact-card">
+        <div class="text-xs uppercase tracking-wider text-[var(--ink-2)] mb-3">Tech stack I'd use</div>
+        <div class="space-y-2 text-sm">
+          <div><b>WhatsApp Business API</b> — native to how Indian users already communicate</div>
+          <div><b>Claude API + RAG</b> — strong reasoning, grounded in academy DB</div>
+          <div><b>Deterministic workflows</b> for booking/reminders — never let the LLM book a slot</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Annotated mockup -->
+  <div class="grid grid-cols-12 gap-8 items-start">
+    <div class="col-span-12 lg:col-span-5 relative">
+      <div class="rounded-[28px] shadow-2xl border border-[var(--line)] bg-white max-w-sm mx-auto relative">
+        <div class="bg-[#075e54] text-white p-4 flex items-center gap-3 relative rounded-t-[28px]">
+          <div class="mark" style="top: -10px; left: -10px;">1</div>
+          <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-serif font-bold">B</div>
+          <div class="flex-1">
+            <div class="font-semibold text-sm">BookMyPlayer Assist</div>
+            <div class="text-xs opacity-80">online · auto-reply by AI</div>
+          </div>
+        </div>
+        <div class="bg-[#e5ddd5] p-4 space-y-3 min-h-[480px] rounded-b-[28px]" style="background-image: radial-gradient(rgba(0,0,0,0.04) 1px, transparent 1px); background-size: 8px 8px;">
+          <div class="ws-bubble-in relative">
+            <div class="mark" style="top: -10px; left: -10px;">2</div>
+            <div class="text-sm">Hi! I saw you were looking at Elite Football Academy in Andheri. Want me to set up a free trial this weekend? 🙌</div>
+            <div class="text-[10px] text-[var(--ink-2)] text-right mt-1">5:42 PM</div>
+          </div>
+          <div class="ws-bubble-out ml-auto">
+            <div class="text-sm">My son is 12. Is the U-13 batch full?</div>
+            <div class="text-[10px] text-[var(--ink-2)] text-right mt-1">5:43 PM ✓✓</div>
+          </div>
+          <div class="ws-bubble-in relative">
+            <div class="mark" style="top: -10px; left: -10px;">3</div>
+            <div class="text-sm">Good news — U-13 has 3 spots left. Coach Rakesh (ex-Mumbai Ranji) handles the batch. Saturday 4 PM or Sunday 9 AM for a trial?</div>
+            <div class="text-[10px] text-[var(--ink-2)] text-right mt-1">5:43 PM</div>
+          </div>
+          <div class="ws-bubble-out ml-auto">
+            <div class="text-sm">Saturday 4 PM please</div>
+            <div class="text-[10px] text-[var(--ink-2)] text-right mt-1">5:44 PM ✓✓</div>
+          </div>
+          <div class="ws-bubble-in relative">
+            <div class="mark" style="top: -10px; left: -10px;">4</div>
+            <div class="text-sm">Booked ✅</div>
+            <div class="mt-2 p-3 rounded-lg bg-[var(--bg)] border border-[var(--line)]">
+              <div class="text-xs text-[var(--ink-2)] uppercase tracking-wider">Trial confirmed</div>
+              <div class="text-sm font-semibold mt-1">Elite Football Academy</div>
+              <div class="text-xs text-[var(--ink-2)] mt-0.5">Sat 28 Nov · 4:00 PM · Andheri</div>
+            </div>
+            <div class="text-sm mt-2">I'll send a reminder Friday evening.</div>
+            <div class="text-[10px] text-[var(--ink-2)] text-right mt-1">5:44 PM</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-span-12 lg:col-span-7">
+      <!-- Behind-the-scenes -->
+      <div class="rounded-2xl border border-[var(--line)] p-6 mb-4 relative bg-white">
+        <div class="mark" style="top: -10px; left: -10px;">5</div>
+        <div class="text-xs font-semibold text-[var(--ink-2)] uppercase tracking-wider mb-4">Behind that reply — what the AI does</div>
+        <div class="grid grid-cols-3 gap-3">
+          <div class="p-3 rounded-xl bg-[var(--bg)] border border-[var(--line)]">
+            <div class="text-xs text-[var(--ai-deep)] font-bold mb-1">1 · INTENT</div>
+            <div class="text-xs">Trial booking · age 12 · football · Andheri</div>
+          </div>
+          <div class="p-3 rounded-xl bg-[var(--bg)] border border-[var(--line)]">
+            <div class="text-xs text-[var(--ai-deep)] font-bold mb-1">2 · RETRIEVAL</div>
+            <div class="text-xs">U-13: 3 slots · Coach Rakesh · Sat/Sun</div>
+          </div>
+          <div class="p-3 rounded-xl bg-[var(--bg)] border border-[var(--line)]">
+            <div class="text-xs text-[var(--ai-deep)] font-bold mb-1">3 · ACTION</div>
+            <div class="text-xs">Deterministic booking + T-24h reminder</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-[var(--line)] p-6 relative bg-white">
+        <div class="mark" style="top: -10px; left: -10px;">6</div>
+        <div class="text-xs font-semibold text-[var(--ink-2)] uppercase tracking-wider mb-3">Academy dashboard view of this conversation</div>
+        <div class="border border-[var(--line)] rounded-xl p-4 bg-[var(--bg)]">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <div class="w-9 h-9 rounded-full bg-[var(--navy)] text-white flex items-center justify-center font-semibold text-sm">P</div>
+              <div>
+                <div class="font-semibold text-sm">Priya Sharma · parent of Aarav (12)</div>
+                <div class="text-xs text-[var(--ink-2)]">Booked trial · no manual reply needed</div>
+              </div>
+            </div>
+            <span class="pill pill-bad">🔥 High intent</span>
+          </div>
+          <div class="text-xs text-[var(--ink-2)] grid grid-cols-3 gap-3 pt-3 border-t border-[var(--line)]">
+            <div><span class="block text-[var(--ink)] font-semibold">8 messages</span>conversation</div>
+            <div><span class="block text-[var(--ink)] font-semibold">2m 14s</span>resolution</div>
+            <div><span class="block text-[var(--ink)] font-semibold">94%</span>AI confidence</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEGEND -->
+  <div class="mt-10 grid grid-cols-12 gap-8">
+    <div class="col-span-12 md:col-span-7">
+      <div class="text-xs font-semibold uppercase tracking-wider text-[var(--ink-2)] mb-4">What each callout shows</div>
+      <div>
+        <div class="legend-row flex items-start"><span class="mark-inline">1</span><div><div class="font-semibold text-sm">Branded auto-reply identity</div><div class="text-sm text-[var(--ink-2)]">"Auto-reply by AI" is transparent — parents see immediately who they're talking to. Builds trust, avoids the "fake human" creepiness.</div></div></div>
+        <div class="legend-row flex items-start"><span class="mark-inline">2</span><div><div class="font-semibold text-sm">Proactive re-engagement</div><div class="text-sm text-[var(--ink-2)]">Triggered when a user views an academy on the site but doesn't inquire. Catches drop-offs in the most-used app in India.</div></div></div>
+        <div class="legend-row flex items-start"><span class="mark-inline">3</span><div><div class="font-semibold text-sm">Grounded, specific replies</div><div class="text-sm text-[var(--ink-2)]">Slot count, coach name, time options — pulled from the academy DB via RAG. No hallucination.</div></div></div>
+        <div class="legend-row flex items-start"><span class="mark-inline">4</span><div><div class="font-semibold text-sm">Booking as a structured card</div><div class="text-sm text-[var(--ink-2)]">Confirmation isn't free-text. It's a rendered card the parent can show at the gate. Reminder is scheduled deterministically.</div></div></div>
+        <div class="legend-row flex items-start"><span class="mark-inline">5</span><div><div class="font-semibold text-sm">Three-stage pipeline (transparency)</div><div class="text-sm text-[var(--ink-2)]">Intent → Retrieval → Action. Each stage is logged, so when something fails the team can debug exactly where.</div></div></div>
+        <div class="legend-row flex items-start"><span class="mark-inline">6</span><div><div class="font-semibold text-sm">Academy sees the thread + intent score</div><div class="text-sm text-[var(--ink-2)]">Connects to Feature 03 — academies don't get a raw message, they get a triaged lead with conversation history attached.</div></div></div>
+      </div>
+    </div>
+    <div class="col-span-12 md:col-span-5">
+      <div class="text-xs font-semibold uppercase tracking-wider text-[var(--ink-2)] mb-4">Business impact</div>
+      <div class="space-y-3">
+        <div class="impact-card"><div class="text-2xl font-serif">↑ Conversion</div><div class="text-xs text-[var(--ink-2)] mt-1">Fewer drop-offs after the website session ends</div></div>
+        <div class="impact-card"><div class="text-2xl font-serif">↓ Response time</div><div class="text-xs text-[var(--ink-2)] mt-1">Seconds vs. hours from a human</div></div>
+        <div class="impact-card"><div class="text-2xl font-serif">↑ Academy trust</div><div class="text-xs text-[var(--ink-2)] mt-1">Pre-qualified leads land in the dashboard</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================== -->
+<!-- ================== FEATURE 03: LEAD SCORING ================== -->
+<!-- ============================================================== -->
+<section id="f3" class="bg-white border-y border-[var(--line)]">
+  <div class="max-w-6xl mx-auto px-6 py-20">
+    <div class="grid grid-cols-12 gap-8 mb-10">
+      <div class="col-span-12 md:col-span-7">
+        <div class="text-xs font-semibold tracking-[0.15em] text-[var(--ai-deep)] mb-3">FEATURE 03 · ACADEMY-SIDE</div>
+        <h2 class="font-serif text-4xl md:text-5xl tracking-tight mb-4">AI Lead Scoring &amp; Academy Intelligence</h2>
+        <p class="text-[var(--ink-2)] text-lg leading-relaxed mb-5">
+          Every inquiry looks the same in a form. Behaviorally, a parent who watched 4 videos and compared 3 academies is nothing like one who bounced after 8 seconds. This view ranks every lead — with reasons academies can trust.
+        </p>
+        <div class="space-y-2 text-sm">
+          <div class="flex items-start gap-2"><span class="text-[var(--ai)] font-bold">•</span> Academies stop wasting time on tire-kickers</div>
+          <div class="flex items-start gap-2"><span class="text-[var(--ai)] font-bold">•</span> Serious users get faster replies — better UX both sides</div>
+          <div class="flex items-start gap-2"><span class="text-[var(--ai)] font-bold">•</span> Explainability is the differentiator — show <i>why</i>, not just the score</div>
+        </div>
+      </div>
+      <div class="col-span-12 md:col-span-5">
+        <div class="impact-card">
+          <div class="text-xs uppercase tracking-wider text-[var(--ink-2)] mb-3">Tech stack I'd use</div>
+          <div class="space-y-2 text-sm">
+            <div><b>XGBoost</b> — works well on behavioral/tabular data, easy to explain</div>
+            <div><b>Scikit-learn</b> — feature engineering and evaluation pipelines</div>
+            <div><b>SHAP values</b> — surface the top-3 reasons for each score</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Annotated mockup -->
+    <div class="browser-frame relative">
+      <div class="browser-bar">
+        <span class="browser-dot bg-[#ff5f57]"></span>
+        <span class="browser-dot bg-[#ffbd2e]"></span>
+        <span class="browser-dot bg-[#28c941]"></span>
+        <div class="mx-auto text-xs text-[var(--ink-2)] bg-white border border-[var(--line)] rounded-md px-3 py-1">academy.bookmyplayer.com/leads</div>
+      </div>
+      <div class="grid grid-cols-12">
+        <aside class="col-span-2 bg-[var(--navy)] text-white p-5 hidden md:block">
+          <div class="font-serif text-base mb-6">Elite FB Academy</div>
+          <nav class="space-y-1 text-xs">
+            <div class="px-3 py-2 rounded-lg bg-white/10 font-semibold">Leads</div>
+            <div class="px-3 py-2 rounded-lg text-white/70">Bookings</div>
+            <div class="px-3 py-2 rounded-lg text-white/70">Coaches</div>
+            <div class="px-3 py-2 rounded-lg text-white/70">Co-Pilot</div>
+          </nav>
+        </aside>
+
+        <div class="col-span-12 md:col-span-10 bg-white p-8 relative">
+          <div class="flex items-end justify-between mb-6 relative">
+            <div>
+              <div class="text-xs text-[var(--ink-2)] uppercase tracking-wider">This week</div>
+              <h3 class="font-serif text-3xl mt-1">42 new leads</h3>
+            </div>
+            <div class="flex gap-2 relative">
+              <div class="mark" style="top: -12px; right: -12px;">1</div>
+              <button class="px-3 py-1.5 text-xs border border-[var(--line)] rounded-lg">All (42)</button>
+              <button class="px-3 py-1.5 text-xs bg-[var(--ink)] text-white rounded-lg">🔥 High (9)</button>
+              <button class="px-3 py-1.5 text-xs border border-[var(--line)] rounded-lg">Medium (18)</button>
+              <button class="px-3 py-1.5 text-xs border border-[var(--line)] rounded-lg">Low (15)</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-4 gap-3 mb-6 relative">
+            <div class="impact-card"><div class="text-xs text-[var(--ink-2)] uppercase">Conv. high</div><div class="font-serif text-2xl mt-1">68%</div></div>
+            <div class="impact-card"><div class="text-xs text-[var(--ink-2)] uppercase">Conv. low</div><div class="font-serif text-2xl mt-1">12%</div></div>
+            <div class="impact-card"><div class="text-xs text-[var(--ink-2)] uppercase">Avg. reply</div><div class="font-serif text-2xl mt-1">3h 12m</div></div>
+            <div class="impact-card bg-[var(--ai-soft)] border-[var(--ai)] relative">
+              <div class="mark" style="top: -12px; right: -12px;">5</div>
+              <div class="text-xs text-[var(--ai-deep)] uppercase font-bold">AI nudge</div>
+              <div class="text-xs mt-1 leading-tight">Reply &lt;1hr to lift conversion ~22%</div>
+            </div>
+          </div>
+
+          <div class="rounded-xl border border-[var(--line)] overflow-hidden">
+            <div class="grid grid-cols-12 px-4 py-2 bg-[var(--bg)] text-xs uppercase text-[var(--ink-2)] font-semibold tracking-wider">
+              <div class="col-span-3">Lead</div>
+              <div class="col-span-2">Score</div>
+              <div class="col-span-5">Why this score</div>
+              <div class="col-span-2 text-right">Action</div>
+            </div>
+
+            <div class="grid grid-cols-12 px-4 py-3 items-center border-t border-[var(--line)] relative">
+              <div class="mark" style="top: 50%; left: -12px; transform: translateY(-50%);">2</div>
+              <div class="col-span-3 flex items-center gap-2">
+                <div class="w-8 h-8 rounded-full bg-[var(--navy)] text-white flex items-center justify-center text-xs font-semibold">P</div>
+                <div><div class="text-xs font-semibold">Priya Sharma</div><div class="text-[10px] text-[var(--ink-2)]">parent · Aarav 12 · Andheri</div></div>
+              </div>
+              <div class="col-span-2 relative">
+                <div class="mark" style="top: -10px; right: 30%;">3</div>
+                <div class="flex items-center gap-2"><span class="font-serif text-2xl text-[var(--bad)]">94</span><span class="pill pill-bad">🔥</span></div>
+              </div>
+              <div class="col-span-5 flex flex-wrap gap-1 relative">
+                <div class="mark" style="top: -10px; left: 0;">4</div>
+                <span class="pill pill-muted">4 videos watched</span>
+                <span class="pill pill-muted">3 academies compared</span>
+                <span class="pill pill-muted">Profile 100%</span>
+              </div>
+              <div class="col-span-2 text-right"><button class="text-xs font-semibold bg-[var(--ink)] text-white px-3 py-1.5 rounded-lg">Reply</button></div>
+            </div>
+
+            <div class="grid grid-cols-12 px-4 py-3 items-center border-t border-[var(--line)]">
+              <div class="col-span-3 flex items-center gap-2">
+                <div class="w-8 h-8 rounded-full bg-[var(--navy)] text-white flex items-center justify-center text-xs font-semibold">R</div>
+                <div><div class="text-xs font-semibold">Rohit Mehta</div><div class="text-[10px] text-[var(--ink-2)]">parent · Diya 9 · Powai</div></div>
+              </div>
+              <div class="col-span-2 flex items-center gap-2"><span class="font-serif text-2xl text-[var(--bad)]">87</span><span class="pill pill-bad">🔥</span></div>
+              <div class="col-span-5 flex flex-wrap gap-1">
+                <span class="pill pill-muted">2 video uploads</span>
+                <span class="pill pill-muted">Asked fees in WA</span>
+              </div>
+              <div class="col-span-2 text-right"><button class="text-xs font-semibold bg-[var(--ink)] text-white px-3 py-1.5 rounded-lg">Reply</button></div>
+            </div>
+
+            <div class="grid grid-cols-12 px-4 py-3 items-center border-t border-[var(--line)]">
+              <div class="col-span-3 flex items-center gap-2">
+                <div class="w-8 h-8 rounded-full bg-[var(--navy)] text-white flex items-center justify-center text-xs font-semibold">S</div>
+                <div><div class="text-xs font-semibold">Saanvi Patel</div><div class="text-[10px] text-[var(--ink-2)]">self · 16 · Goregaon</div></div>
+              </div>
+              <div class="col-span-2 flex items-center gap-2"><span class="font-serif text-2xl text-[var(--warn)]">62</span><span class="pill pill-warn">Med</span></div>
+              <div class="col-span-5 flex flex-wrap gap-1">
+                <span class="pill pill-muted">1 upload</span>
+                <span class="pill pill-muted">Profile 60%</span>
+              </div>
+              <div class="col-span-2 text-right"><button class="text-xs font-semibold border border-[var(--line)] px-3 py-1.5 rounded-lg">Nurture</button></div>
+            </div>
+
+            <div class="grid grid-cols-12 px-4 py-3 items-center border-t border-[var(--line)] opacity-60">
+              <div class="col-span-3 flex items-center gap-2">
+                <div class="w-8 h-8 rounded-full bg-[var(--navy)] text-white flex items-center justify-center text-xs font-semibold">V</div>
+                <div><div class="text-xs font-semibold">Vikram Anand</div><div class="text-[10px] text-[var(--ink-2)]">parent · 7 · Bandra</div></div>
+              </div>
+              <div class="col-span-2 flex items-center gap-2"><span class="font-serif text-2xl text-[var(--ink-2)]">28</span><span class="pill pill-muted">Low</span></div>
+              <div class="col-span-5 flex flex-wrap gap-1">
+                <span class="pill pill-muted">8s on page</span>
+                <span class="pill pill-muted">No profile</span>
+              </div>
+              <div class="col-span-2 text-right"><button class="text-xs font-semibold border border-[var(--line)] px-3 py-1.5 rounded-lg">Auto-nurture</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LEGEND -->
+    <div class="mt-10 grid grid-cols-12 gap-8">
+      <div class="col-span-12 md:col-span-7">
+        <div class="text-xs font-semibold uppercase tracking-wider text-[var(--ink-2)] mb-4">What each callout shows</div>
+        <div>
+          <div class="legend-row flex items-start"><span class="mark-inline">1</span><div><div class="font-semibold text-sm">Tier filters (High / Medium / Low)</div><div class="text-sm text-[var(--ink-2)]">Academies focus their day on the 9 high-intent leads, not 42 mixed ones. One click filters the view.</div></div></div>
+          <div class="legend-row flex items-start"><span class="mark-inline">2</span><div><div class="font-semibold text-sm">Lead profile context</div><div class="text-sm text-[var(--ink-2)]">Parent vs. player, age, neighborhood — surfaced inline so the academy can personalize the reply.</div></div></div>
+          <div class="legend-row flex items-start"><span class="mark-inline">3</span><div><div class="font-semibold text-sm">Numeric score + tier badge</div><div class="text-sm text-[var(--ink-2)]">"94" with a 🔥 badge — anchors urgency. Color codes match the tier so it's scannable from across the room.</div></div></div>
+          <div class="legend-row flex items-start"><span class="mark-inline">4</span><div><div class="font-semibold text-sm">Why-this-score chips</div><div class="text-sm text-[var(--ink-2)]">The biggest unlock. "4 videos watched · 3 academies compared · Profile 100%" — academies trust the number because they see the evidence.</div></div></div>
+          <div class="legend-row flex items-start"><span class="mark-inline">5</span><div><div class="font-semibold text-sm">AI nudge card</div><div class="text-sm text-[var(--ink-2)]">Quantified behavior change suggestion. Not "you should reply faster" — but "reply &lt;1hr lifts conversion ~22%". Drives action.</div></div></div>
+        </div>
+      </div>
+      <div class="col-span-12 md:col-span-5">
+        <div class="text-xs font-semibold uppercase tracking-wider text-[var(--ink-2)] mb-4">Business impact</div>
+        <div class="space-y-3">
+          <div class="impact-card"><div class="text-2xl font-serif">↑ ROI for academies</div><div class="text-xs text-[var(--ink-2)] mt-1">Same effort, higher-quality leads</div></div>
+          <div class="impact-card"><div class="text-2xl font-serif">↑ Platform retention</div><div class="text-xs text-[var(--ink-2)] mt-1">Academies stay when they see attribution work</div></div>
+          <div class="impact-card"><div class="text-2xl font-serif">Premium tier</div><div class="text-xs text-[var(--ink-2)] mt-1">Scoring + insights could become paid in Phase 2</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================== -->
+<!-- ================== FEATURE 04: PERSONALIZED FEED ============= -->
+<!-- ============================================================== -->
+<section id="f4" class="max-w-6xl mx-auto px-6 py-20">
+  <div class="grid grid-cols-12 gap-8 mb-10">
+    <div class="col-span-12 md:col-span-7">
+      <div class="text-xs font-semibold tracking-[0.15em] text-[var(--ai-deep)] mb-3">FEATURE 04</div>
+      <h2 class="font-serif text-4xl md:text-5xl tracking-tight mb-4">AI-Personalized Feed &amp; Homepage</h2>
+      <p class="text-[var(--ink-2)] text-lg leading-relaxed mb-5">
+        Today every user sees the same homepage. The cricket batter and the football goalkeeper should land on what feels like two different apps — even though the template is the same. Powered by behavior embeddings.
+      </p>
+      <div class="space-y-2 text-sm">
+        <div class="flex items-start gap-2"><span class="text-[var(--ai)] font-bold">•</span> Removes the "directory feel" — site responds to who you are</div>
+        <div class="flex items-start gap-2"><span class="text-[var(--ai)] font-bold">•</span> Longer sessions, more clicks, better academy visibility</div>
+        <div class="flex items-start gap-2"><span class="text-[var(--ai)] font-bold">•</span> Cold-start handled with onboarding sport preference</div>
+      </div>
+    </div>
+    <div class="col-span-12 md:col-span-5">
+      <div class="impact-card">
+        <div class="text-xs uppercase tracking-wider text-[var(--ink-2)] mb-3">Tech stack I'd use</div>
+        <div class="space-y-2 text-sm">
+          <div><b>pgvector</b> — start here, simpler &amp; cheaper at small scale</div>
+          <div><b>Pinecone</b> — migrate when retrieval latency matters</div>
+          <div><b>OpenAI embeddings + ranking model</b> trained on user-behavior signals</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Annotated split mockup -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 relative">
+
+    <!-- User A — Cricket -->
+    <div>
+      <div class="flex items-center gap-2 mb-3">
+        <span class="pill pill-ai">USER A · CRICKET</span>
+        <span class="text-xs text-[var(--ink-2)]">Aarav, 14, batsman</span>
+      </div>
+      <div class="rounded-2xl border border-[var(--line)] bg-[var(--bg)] p-5 relative">
+        <div class="mark" style="top: -10px; left: -10px;">1</div>
+        <div class="text-xs text-[var(--ink-2)] uppercase tracking-wider">Good evening</div>
+        <h3 class="font-serif text-xl mt-1 mb-3">Sharpen your cover drive, Aarav?</h3>
+        <div class="space-y-2">
+          <div class="bg-white rounded-xl p-3 flex items-center gap-3 border border-[var(--line)] relative">
+            <div class="mark" style="top: -10px; right: -10px;">2</div>
+            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-green-700 to-green-900 flex items-center justify-center text-white text-lg">🏏</div>
+            <div class="flex-1">
+              <div class="text-xs font-semibold">MCA Cricket Academy</div>
+              <div class="text-[10px] text-[var(--ink-2)]">Ex-Ranji coaches · 3.1km</div>
+            </div>
+            <span class="pill pill-ai text-[9px]">98% fit</span>
+          </div>
+          <div class="bg-white rounded-xl p-3 flex items-center gap-3 border border-[var(--line)] relative">
+            <div class="mark" style="top: -10px; right: -10px;">3</div>
+            <div class="w-10 h-10 rounded-lg bg-[var(--navy)] flex items-center justify-center text-white text-sm">📹</div>
+            <div class="flex-1">
+              <div class="text-xs font-semibold">Drill · Front-foot drive</div>
+              <div class="text-[10px] text-[var(--ink-2)]">Targets your weakest metric · 12 min</div>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl p-3 flex items-center gap-3 border border-[var(--line)] relative">
+            <div class="mark" style="top: -10px; right: -10px;">4</div>
+            <div class="w-10 h-10 rounded-lg bg-amber-500 flex items-center justify-center text-white text-sm">🏆</div>
+            <div class="flex-1">
+              <div class="text-xs font-semibold">U-15 District T20 Trials</div>
+              <div class="text-[10px] text-[var(--ink-2)]">Dec 18 · Wankhede · You qualify</div>
+            </div>
+            <span class="pill pill-warn text-[9px]">3 days</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- User B — Football GK -->
+    <div>
+      <div class="flex items-center gap-2 mb-3">
+        <span class="pill pill-ai">USER B · FOOTBALL</span>
+        <span class="text-xs text-[var(--ink-2)]">Diya, 16, goalkeeper</span>
+      </div>
+      <div class="rounded-2xl border border-[var(--line)] bg-[var(--bg)] p-5">
+        <div class="text-xs text-[var(--ink-2)] uppercase tracking-wider">Good evening</div>
+        <h3 class="font-serif text-xl mt-1 mb-3">Quick reflexes for matchday, Diya?</h3>
+        <div class="space-y-2">
+          <div class="bg-white rounded-xl p-3 flex items-center gap-3 border border-[var(--line)]">
+            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-600 to-emerald-900 flex items-center justify-center text-white text-lg">⚽</div>
+            <div class="flex-1">
+              <div class="text-xs font-semibold">GK Lab Mumbai</div>
+              <div class="text-[10px] text-[var(--ink-2)]">Specialist GK academy · 4.7km</div>
+            </div>
+            <span class="pill pill-ai text-[9px]">96% fit</span>
+          </div>
+          <div class="bg-white rounded-xl p-3 flex items-center gap-3 border border-[var(--line)]">
+            <div class="w-10 h-10 rounded-lg bg-[var(--navy)] flex items-center justify-center text-white text-sm">📹</div>
+            <div class="flex-1">
+              <div class="text-xs font-semibold">Drill · Lateral dive sets</div>
+              <div class="text-[10px] text-[var(--ink-2)]">Your reach -8% vs. peers · 9 min</div>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl p-3 flex items-center gap-3 border border-[var(--line)]">
+            <div class="w-10 h-10 rounded-lg bg-amber-500 flex items-center justify-center text-white text-sm">🏆</div>
+            <div class="flex-1">
+              <div class="text-xs font-semibold">Mumbai Girls FC League</div>
+              <div class="text-[10px] text-[var(--ink-2)]">Jan 12 · Cooperage · You qualify</div>
+            </div>
+            <span class="pill pill-warn text-[9px]">Open</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Architecture -->
+  <div class="mt-8 rounded-2xl border border-[var(--line)] p-5 bg-white relative">
+    <div class="mark" style="top: -10px; left: -10px;">5</div>
+    <div class="text-xs font-semibold uppercase tracking-wider text-[var(--ink-2)] mb-3">Behind the scenes — same template, two homepages</div>
+    <div class="grid grid-cols-5 gap-3 items-center text-center text-xs">
+      <div class="p-3 bg-[var(--bg)] rounded-xl border border-[var(--line)]"><div class="text-[10px] text-[var(--ink-2)] mb-1">Signals</div><div>views · clicks · uploads · search</div></div>
+      <div class="text-[var(--ai)] text-2xl">→</div>
+      <div class="p-3 bg-[var(--bg)] rounded-xl border border-[var(--line)]"><div class="text-[10px] text-[var(--ink-2)] mb-1">Embedding</div><div class="font-mono">[0.21, -0.84, …]</div></div>
+      <div class="text-[var(--ai)] text-2xl">→</div>
+      <div class="p-3 bg-[var(--bg)] rounded-xl border border-[var(--line)]"><div class="text-[10px] text-[var(--ink-2)] mb-1">Ranked feed</div><div>academies · drills · tournaments</div></div>
+    </div>
+  </div>
+
+  <!-- LEGEND -->
+  <div class="mt-10 grid grid-cols-12 gap-8">
+    <div class="col-span-12 md:col-span-7">
+      <div class="text-xs font-semibold uppercase tracking-wider text-[var(--ink-2)] mb-4">What each callout shows</div>
+      <div>
+        <div class="legend-row flex items-start"><span class="mark-inline">1</span><div><div class="font-semibold text-sm">Dynamic headline per user</div><div class="text-sm text-[var(--ink-2)]">"Sharpen your cover drive" vs. "Quick reflexes for matchday". Generated from the user's recent activity + sport — not a template variable.</div></div></div>
+        <div class="legend-row flex items-start"><span class="mark-inline">2</span><div><div class="font-semibold text-sm">Academies ranked by fit %</div><div class="text-sm text-[var(--ink-2)]">"98% fit" makes the ranking transparent. Different users see different academies first — the surface adapts.</div></div></div>
+        <div class="legend-row flex items-start"><span class="mark-inline">3</span><div><div class="font-semibold text-sm">Drills tied to last analysis</div><div class="text-sm text-[var(--ink-2)]">Connects to Feature 01 — the homepage knows your weakest metric and surfaces drills against it.</div></div></div>
+        <div class="legend-row flex items-start"><span class="mark-inline">4</span><div><div class="font-semibold text-sm">Tournaments with eligibility</div><div class="text-sm text-[var(--ink-2)]">"You qualify" + "3 days left" — relevance + urgency, not just a list of every event in Mumbai.</div></div></div>
+        <div class="legend-row flex items-start"><span class="mark-inline">5</span><div><div class="font-semibold text-sm">Embedding-based ranking pipeline</div><div class="text-sm text-[var(--ink-2)]">Behavior → vector → ranked content. Cheap to run on pgvector at start; scales to Pinecone when needed.</div></div></div>
+      </div>
+    </div>
+    <div class="col-span-12 md:col-span-5">
+      <div class="text-xs font-semibold uppercase tracking-wider text-[var(--ink-2)] mb-4">Business impact</div>
+      <div class="space-y-3">
+        <div class="impact-card"><div class="text-2xl font-serif">↑ Session time</div><div class="text-xs text-[var(--ink-2)] mt-1">Less searching, more discovery</div></div>
+        <div class="impact-card"><div class="text-2xl font-serif">↑ DAU</div><div class="text-xs text-[var(--ink-2)] mt-1">Feed feels fresh, users return</div></div>
+        <div class="impact-card"><div class="text-2xl font-serif">↑ Academy spread</div><div class="text-xs text-[var(--ink-2)] mt-1">Long-tail academies get matched, not just top-rated</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================== -->
+<!-- ================== FEATURE 05: ACADEMY CO-PILOT ============== -->
+<!-- ============================================================== -->
+<section id="f5" class="bg-white border-y border-[var(--line)]">
+  <div class="max-w-6xl mx-auto px-6 py-20">
+    <div class="grid grid-cols-12 gap-8 mb-10">
+      <div class="col-span-12 md:col-span-7">
+        <div class="text-xs font-semibold tracking-[0.15em] text-[var(--ai-deep)] mb-3">FEATURE 05 · ACADEMY-SIDE</div>
+        <h2 class="font-serif text-4xl md:text-5xl tracking-tight mb-4">AI Co-Pilot for Academies</h2>
+        <p class="text-[var(--ink-2)] text-lg leading-relaxed mb-5">
+          Most AI is built for players. This one is the reason academies stay on the platform: a weekly AI briefing, ready-to-send replies, and profile improvements — all grounded in their own data.
+        </p>
+        <div class="space-y-2 text-sm">
+          <div class="flex items-start gap-2"><span class="text-[var(--ai)] font-bold">•</span> Turns BookMyPlayer from "lead source" into "business co-pilot"</div>
+          <div class="flex items-start gap-2"><span class="text-[var(--ai)] font-bold">•</span> Natural upgrade path to a paid Premium tier</div>
+          <div class="flex items-start gap-2"><span class="text-[var(--ai)] font-bold">•</span> Marketplace moat — competitors can copy listings, not the AI relationship</div>
+        </div>
+      </div>
+      <div class="col-span-12 md:col-span-5">
+        <div class="impact-card">
+          <div class="text-xs uppercase tracking-wider text-[var(--ink-2)] mb-3">Tech stack I'd use</div>
+          <div class="space-y-2 text-sm">
+            <div><b>Claude API</b> — strong reasoning for reply drafts and weekly briefings</div>
+            <div><b>RAG over academy DB</b> — every output cites their own data</div>
+            <div><b>Weekly batch pipeline</b> — real-time isn't needed; weekly is the right cadence</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Annotated mockup -->
+    <div class="browser-frame relative">
+      <div class="browser-bar">
+        <span class="browser-dot bg-[#ff5f57]"></span>
+        <span class="browser-dot bg-[#ffbd2e]"></span>
+        <span class="browser-dot bg-[#28c941]"></span>
+        <div class="mx-auto text-xs text-[var(--ink-2)] bg-white border border-[var(--line)] rounded-md px-3 py-1">academy.bookmyplayer.com/co-pilot</div>
+      </div>
+      <div class="grid grid-cols-12">
+        <aside class="col-span-2 bg-[var(--navy)] text-white p-5 hidden md:block">
+          <div class="font-serif text-base mb-6">Elite FB Academy</div>
+          <nav class="space-y-1 text-xs">
+            <div class="px-3 py-2 rounded-lg text-white/70">Leads</div>
+            <div class="px-3 py-2 rounded-lg text-white/70">Bookings</div>
+            <div class="px-3 py-2 rounded-lg bg-white/10 font-semibold">Co-Pilot</div>
+          </nav>
+        </aside>
+
+        <div class="col-span-12 md:col-span-10 p-8 relative">
+          <!-- Weekly briefing -->
+          <div class="rounded-2xl bg-[var(--navy)] text-white p-6 mb-6 relative">
+            <div class="mark" style="top: -10px; left: -10px;">1</div>
+            <div class="flex items-center gap-2 mb-3">
+              <span class="pill pill-ai">WEEK 47 · AI BRIEFING</span>
+              <span class="text-xs opacity-70">generated Sun 8:00 AM</span>
+            </div>
+            <h3 class="font-serif text-2xl mb-2">3 of your last 10 high-intent leads dropped because reply time exceeded 4 hours.</h3>
+            <p class="text-white/80 text-sm">Estimated revenue impact: <b class="text-white">₹36,000/month</b>. Academies that reply within 1 hour convert 22% better.</p>
+            <div class="flex gap-3 mt-4">
+              <button class="bg-white text-[var(--navy)] px-4 py-2 rounded-lg text-sm font-semibold">Draft templates</button>
+              <button class="border border-white/30 text-white px-4 py-2 rounded-lg text-sm">Show the 3 leads</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-12 gap-5">
+            <div class="col-span-12 lg:col-span-7 space-y-5">
+              <!-- Reply suggestion -->
+              <div class="rounded-2xl border border-[var(--line)] p-5 relative">
+                <div class="mark" style="top: -10px; left: -10px;">2</div>
+                <div class="flex items-center justify-between mb-3">
+                  <div class="font-semibold text-sm">AI-drafted reply · waiting for approval</div>
+                  <span class="pill pill-ai">2 pending</span>
+                </div>
+                <div class="p-3 bg-[var(--bg)] rounded-xl mb-3 text-sm leading-relaxed">
+                  Hi Priya, thanks for considering us for Aarav. The U-13 batch is led by Coach Rakesh (ex-Ranji, 8 yrs coaching). We have a free trial Saturday 4 PM at Andheri — should I reserve a spot?
+                </div>
+                <div class="flex gap-2">
+                  <button class="flex-1 py-2 rounded-lg bg-[var(--ink)] text-white text-xs font-semibold">Send</button>
+                  <button class="flex-1 py-2 rounded-lg border border-[var(--line)] text-xs">Edit</button>
+                  <button class="py-2 px-3 rounded-lg border border-[var(--line)] text-xs">↻</button>
+                </div>
+              </div>
+
+              <!-- Profile improvements -->
+              <div class="rounded-2xl border border-[var(--line)] p-5 relative">
+                <div class="mark" style="top: -10px; left: -10px;">3</div>
+                <div class="flex items-center justify-between mb-3">
+                  <div class="font-semibold text-sm">Profile improvements · est. lift</div>
+                  <span class="pill pill-ok">+18% visibility</span>
+                </div>
+                <div class="space-y-2">
+                  <div class="flex items-center gap-3 p-2 rounded-lg border border-[var(--line)] text-sm">
+                    <span class="w-5 h-5 rounded-full bg-[var(--ai-soft)] text-[var(--ai-deep)] flex items-center justify-center text-[10px] font-bold">1</span>
+                    <div class="flex-1">Add 3 facility photos · academies with 5+ get <b>2.3×</b> inquiries</div>
+                  </div>
+                  <div class="flex items-center gap-3 p-2 rounded-lg border border-[var(--line)] text-sm">
+                    <span class="w-5 h-5 rounded-full bg-[var(--ai-soft)] text-[var(--ai-deep)] flex items-center justify-center text-[10px] font-bold">2</span>
+                    <div class="flex-1">List Coach Rakesh's Ranji credentials in bio</div>
+                  </div>
+                  <div class="flex items-center gap-3 p-2 rounded-lg border border-[var(--line)] text-sm">
+                    <span class="w-5 h-5 rounded-full bg-[var(--ai-soft)] text-[var(--ai-deep)] flex items-center justify-center text-[10px] font-bold">3</span>
+                    <div class="flex-1">Enable Sunday morning slots · 14 unmet searches</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-span-12 lg:col-span-5 space-y-5">
+              <!-- Heatmap -->
+              <div class="rounded-2xl border border-[var(--line)] p-5 relative">
+                <div class="mark" style="top: -10px; right: -10px;">4</div>
+                <div class="text-xs font-semibold uppercase text-[var(--ink-2)] tracking-wider mb-1">When inquiries hit</div>
+                <div class="text-sm mb-3">Wed-Thu 6-8pm is peak — staff up.</div>
+                <div class="grid grid-cols-8 gap-1 text-[10px] text-[var(--ink-2)]">
+                  <div></div>
+                  <div class="text-center">M</div><div class="text-center">T</div><div class="text-center">W</div><div class="text-center">T</div><div class="text-center">F</div><div class="text-center">S</div><div class="text-center">S</div>
+                  <div class="self-center">9</div><div class="heat-cell" style="background:#e6f8fd"></div><div class="heat-cell" style="background:#cdeefa"></div><div class="heat-cell" style="background:#b3e4f4"></div><div class="heat-cell" style="background:#cdeefa"></div><div class="heat-cell" style="background:#e6f8fd"></div><div class="heat-cell" style="background:#f5fbfd"></div><div class="heat-cell" style="background:#f5fbfd"></div>
+                  <div class="self-center">14</div><div class="heat-cell" style="background:#cdeefa"></div><div class="heat-cell" style="background:#b3e4f4"></div><div class="heat-cell" style="background:#7fcfe8"></div><div class="heat-cell" style="background:#7fcfe8"></div><div class="heat-cell" style="background:#b3e4f4"></div><div class="heat-cell" style="background:#cdeefa"></div><div class="heat-cell" style="background:#cdeefa"></div>
+                  <div class="self-center">18</div><div class="heat-cell" style="background:#b3e4f4"></div><div class="heat-cell" style="background:#7fcfe8"></div><div class="heat-cell" style="background:#00b8e6"></div><div class="heat-cell" style="background:#00b8e6"></div><div class="heat-cell" style="background:#7fcfe8"></div><div class="heat-cell" style="background:#b3e4f4"></div><div class="heat-cell" style="background:#b3e4f4"></div>
+                  <div class="self-center">21</div><div class="heat-cell" style="background:#cdeefa"></div><div class="heat-cell" style="background:#b3e4f4"></div><div class="heat-cell" style="background:#b3e4f4"></div><div class="heat-cell" style="background:#7fcfe8"></div><div class="heat-cell" style="background:#b3e4f4"></div><div class="heat-cell" style="background:#cdeefa"></div><div class="heat-cell" style="background:#cdeefa"></div>
+                </div>
+              </div>
+
+              <!-- More suggestions -->
+              <div class="rounded-2xl border border-[var(--line)] p-5 bg-[var(--bg)] relative">
+                <div class="mark" style="top: -10px; right: -10px;">5</div>
+                <div class="text-xs font-semibold uppercase text-[var(--ink-2)] tracking-wider mb-2">Other AI suggestions</div>
+                <div class="space-y-2 text-xs">
+                  <div class="flex items-start gap-2"><span class="text-[var(--ai)]">→</span> 6 parents inquired about U-10 — batch full. Open waitlist?</div>
+                  <div class="flex items-start gap-2"><span class="text-[var(--ai)]">→</span> Best-performing photo: Coach Rakesh + players. Pin?</div>
+                  <div class="flex items-start gap-2"><span class="text-[var(--ai)]">→</span> Run a Dec promo: +12% inquiries forecast.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LEGEND -->
+    <div class="mt-10 grid grid-cols-12 gap-8">
+      <div class="col-span-12 md:col-span-7">
+        <div class="text-xs font-semibold uppercase tracking-wider text-[var(--ink-2)] mb-4">What each callout shows</div>
+        <div>
+          <div class="legend-row flex items-start"><span class="mark-inline">1</span><div><div class="font-semibold text-sm">Weekly AI briefing with revenue framing</div><div class="text-sm text-[var(--ink-2)]">Not "your reply time is slow" — but "this cost you ₹36,000". Talks the academy's language: rupees.</div></div></div>
+          <div class="legend-row flex items-start"><span class="mark-inline">2</span><div><div class="font-semibold text-sm">AI-drafted reply with one-click send</div><div class="text-sm text-[var(--ink-2)]">Removes the biggest blocker (writing the reply). Academy stays in control — approves, edits, or regenerates.</div></div></div>
+          <div class="legend-row flex items-start"><span class="mark-inline">3</span><div><div class="font-semibold text-sm">Profile improvements with quantified lift</div><div class="text-sm text-[var(--ink-2)]">Every suggestion includes the expected outcome ("2.3× more inquiries") — turns a checklist into a business case.</div></div></div>
+          <div class="legend-row flex items-start"><span class="mark-inline">4</span><div><div class="font-semibold text-sm">Inquiry heatmap</div><div class="text-sm text-[var(--ink-2)]">Tells the academy when to be online. Visual, immediate. Solves a real operational problem.</div></div></div>
+          <div class="legend-row flex items-start"><span class="mark-inline">5</span><div><div class="font-semibold text-sm">Long-tail suggestions feed</div><div class="text-sm text-[var(--ink-2)]">Smaller tactical nudges always visible — waitlists, photo pinning, promo timing. Keeps the Co-Pilot useful between weekly briefings.</div></div></div>
+        </div>
+      </div>
+      <div class="col-span-12 md:col-span-5">
+        <div class="text-xs font-semibold uppercase tracking-wider text-[var(--ink-2)] mb-4">Business impact</div>
+        <div class="space-y-3">
+          <div class="impact-card"><div class="text-2xl font-serif">↑ Academy retention</div><div class="text-xs text-[var(--ink-2)] mt-1">Switching cost becomes the AI relationship</div></div>
+          <div class="impact-card"><div class="text-2xl font-serif">New revenue line</div><div class="text-xs text-[var(--ink-2)] mt-1">Premium Co-Pilot subscription in Phase 2</div></div>
+          <div class="impact-card"><div class="text-2xl font-serif">Compounding moat</div><div class="text-xs text-[var(--ink-2)] mt-1">More academy data → better briefings → more retention</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================== -->
+<!-- ================== ROADMAP ================================== -->
+<!-- ============================================================== -->
+<section id="roadmap" class="max-w-6xl mx-auto px-6 py-20">
+  <div class="text-xs font-semibold tracking-[0.15em] text-[var(--ink-2)] mb-2">CLOSING</div>
+  <h2 class="font-serif text-4xl md:text-5xl tracking-tight mb-3">Build order &amp; how I'd measure success</h2>
+  <p class="text-[var(--ink-2)] max-w-2xl mb-10">This is the order I'd suggest building in and the kind of outcomes I'd hold these features to.</p>
+
+  <div class="grid grid-cols-12 gap-8">
+    <div class="col-span-12 md:col-span-7">
+      <div class="text-xs font-semibold uppercase tracking-wider text-[var(--ink-2)] mb-4">Suggested build order</div>
+      <div class="space-y-3">
+        <div class="impact-card flex items-start gap-4">
+          <div class="w-8 h-8 rounded-full bg-[var(--ai)] text-white flex items-center justify-center text-sm font-bold">1</div>
+          <div>
+            <div class="font-semibold text-sm">Video Skill Analysis</div>
+            <div class="text-xs text-[var(--ink-2)] mt-1">Start with one sport (e.g. cricket batting). Get the pose pipeline + skill scoring working narrow before going wide.</div>
+          </div>
+        </div>
+        <div class="impact-card flex items-start gap-4">
+          <div class="w-8 h-8 rounded-full bg-[var(--ai)] text-white flex items-center justify-center text-sm font-bold">2</div>
+          <div>
+            <div class="font-semibold text-sm">Lead Scoring</div>
+            <div class="text-xs text-[var(--ink-2)] mt-1">Quickest academy ROI. XGBoost on existing behavioral logs — can be built in parallel with Video Analysis.</div>
+          </div>
+        </div>
+        <div class="impact-card flex items-start gap-4">
+          <div class="w-8 h-8 rounded-full bg-[var(--ai)] text-white flex items-center justify-center text-sm font-bold">3</div>
+          <div>
+            <div class="font-semibold text-sm">WhatsApp AI</div>
+            <div class="text-xs text-[var(--ink-2)] mt-1">Best built after Lead Scoring is live — the bot can then prioritize high-intent conversations and hand the rest to academies.</div>
+          </div>
+        </div>
+        <div class="impact-card flex items-start gap-4">
+          <div class="w-8 h-8 rounded-full bg-[var(--ai)] text-white flex items-center justify-center text-sm font-bold">4</div>
+          <div>
+            <div class="font-semibold text-sm">Personalized Feed</div>
+            <div class="text-xs text-[var(--ink-2)] mt-1">Needs enough behavior data to be useful — gets stronger once the first three features have been generating signals.</div>
+          </div>
+        </div>
+        <div class="impact-card flex items-start gap-4">
+          <div class="w-8 h-8 rounded-full bg-[var(--ai)] text-white flex items-center justify-center text-sm font-bold">5</div>
+          <div>
+            <div class="font-semibold text-sm">Academy Co-Pilot</div>
+            <div class="text-xs text-[var(--ink-2)] mt-1">Built on top of all four — the briefing pulls from lead scores, WhatsApp logs, and homepage analytics. Most valuable once the data layer exists.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-span-12 md:col-span-5">
+      <div class="text-xs font-semibold uppercase tracking-wider text-[var(--ink-2)] mb-4">Outcomes I'd want to see</div>
+      <div class="space-y-3">
+        <div class="impact-card"><div class="flex items-baseline justify-between"><div class="text-sm font-semibold">Repeat visit rate</div><div class="font-serif text-xl">+20%</div></div><div class="text-xs text-[var(--ink-2)] mt-1">Proxy for Video Analysis &amp; Feed working</div></div>
+        <div class="impact-card"><div class="flex items-baseline justify-between"><div class="text-sm font-semibold">Video uploads / user</div><div class="font-serif text-xl">3+/mo</div></div><div class="text-xs text-[var(--ink-2)] mt-1">Engagement loop is closing</div></div>
+        <div class="impact-card"><div class="flex items-baseline justify-between"><div class="text-sm font-semibold">High-intent reply time</div><div class="font-serif text-xl">&lt;1h</div></div><div class="text-xs text-[var(--ink-2)] mt-1">Lead scoring + WhatsApp working together</div></div>
+        <div class="impact-card"><div class="flex items-baseline justify-between"><div class="text-sm font-semibold">Trial → booking conv.</div><div class="font-serif text-xl">+15%</div></div><div class="text-xs text-[var(--ink-2)] mt-1">Hard business outcome — what academies care about</div></div>
+        <div class="impact-card"><div class="flex items-baseline justify-between"><div class="text-sm font-semibold">Academy 6-mo retention</div><div class="font-serif text-xl">+10pp</div></div><div class="text-xs text-[var(--ink-2)] mt-1">Co-Pilot creates real switching cost</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Principles -->
+  <div class="mt-16 rounded-3xl bg-[var(--navy)] text-white p-10">
+    <div class="text-xs font-semibold uppercase tracking-wider text-[var(--ai)] mb-3">PRINCIPLES I'D BUILD BY</div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
+      <div>
+        <div class="font-serif text-2xl mb-1">Both sides of the marketplace win</div>
+        <div class="text-sm text-white/70">Every feature improves player experience AND academy outcomes. If only one side wins, the other leaves.</div>
+      </div>
+      <div>
+        <div class="font-serif text-2xl mb-1">Data &gt; model</div>
+        <div class="text-sm text-white/70">Most AI fails because of poor event tracking, not bad models. I'd invest in instrumentation first.</div>
+      </div>
+      <div>
+        <div class="font-serif text-2xl mb-1">Ship narrow, then wide</div>
+        <div class="text-sm text-white/70">One sport, one workflow, one loop — properly. Then scale. Avoid the "broad but shallow" trap.</div>
+      </div>
+      <div>
+        <div class="font-serif text-2xl mb-1">Defensibility comes from data</div>
+        <div class="text-sm text-white/70">Features get copied. Sports-performance datasets and engagement patterns become the moat.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ FOOTER ============================ -->
+<footer class="border-t border-[var(--line)] bg-white">
+  <div class="max-w-6xl mx-auto px-6 py-12 flex items-center justify-between flex-wrap gap-4">
+    <div>
+      <div class="font-serif text-xl">BookMyPlayer · AI Internship Assignment</div>
+      <div class="text-xs text-[var(--ink-2)] mt-1">Submitted by Ansh Baheti</div>
+    </div>
+    <div class="text-xs text-[var(--ink-2)] text-right">
+      <div>5 features · annotated layouts · suggested build order</div>
+      <div class="mt-1" id="datestamp"></div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  const links = document.querySelectorAll('nav.sticky a');
+  const ids = ['current','f1','f2','f3','f4','f5','roadmap'];
+  const sections = ids.map(id => document.getElementById(id));
+  function onScroll() {
+    const y = window.scrollY + 180;
+    let activeIdx = 0;
+    sections.forEach((s, i) => { if (s && s.offsetTop <= y) activeIdx = i; });
+    links.forEach((l, i) => l.classList.toggle('active', i === activeIdx));
+  }
+  document.addEventListener('scroll', onScroll, { passive: true });
+
+  document.getElementById('datestamp').textContent = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+</script>
+</body>
+</html>

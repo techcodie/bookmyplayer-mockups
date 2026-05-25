@@ -2,9 +2,11 @@
 # BookMyPlayer — UI Changes for 5 AI Features
 
 **Ansh Baheti** · AI Internship Assignment
-**Live mockups:** <https://techcodie.github.io/bookmyplayer-mockups/>
+**Live Demo:** <https://techcodie.github.io/bookmyplayer-mockups/>
 
-This doc covers only the ### UI changes and **how I'd implement** each one. Detailed reasoning is in the live mockup callouts.
+> The Live Demo is an interactive HTML page showing each of the 5 proposed AI features as annotated UI mockups on top of the BookMyPlayer interface. Every change is marked with a numbered callout (①②③…) and explained inline — so you can see exactly *what* changes on screen and *why*.
+
+This doc is the short companion: the **UI changes** and **how I'd implement** each one in bullet form. Detailed reasoning lives in the Live Demo callouts.
 
 ---
 

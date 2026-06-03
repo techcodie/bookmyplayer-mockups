@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: offerfunnel-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: offerfunnel-db
+          property: connectionString
+      - key: CORS_ORIGINS
+        value: https://offerfunnel.vercel.app
+
+databases:
+  - name: offerfunnel-db
+    databaseName: offerfunnel
+    plan: free
